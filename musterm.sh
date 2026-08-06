@@ -11,7 +11,14 @@ fi
 
 export TERM="${TERM:-xterm-256color}"
 MUST_DIR="${HOME}/.config/musterm"
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+REAL_SCRIPT="$0"
+if [ -h "$0" ]; then
+    if command -v readlink >/dev/null 2>&1; then
+        REAL_SCRIPT="$(readlink -f "$0" 2>/dev/null || readlink "$0" 2>/dev/null || echo "$0")"
+    fi
+fi
+SCRIPT_DIR="$(cd "$(dirname "$REAL_SCRIPT")" && pwd)"
 PYTHON_TUI="${SCRIPT_DIR}/musterm.py"
 mkdir -p "$MUST_DIR"
 
