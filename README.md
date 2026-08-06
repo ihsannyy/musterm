@@ -11,25 +11,31 @@ Designed for **Termux (Android)**, **Linux (Debian, Arch, Ubuntu, Fedora, Alpine
 
 ---
 
-## 📽️ Video Review & Interactive Demonstration
+## 📽️ Video Demo & Review
 
-![Video Demo Review](data/review.mp4)
+[![Watch Video Demo](https://img.shields.io/badge/▶_Play-Video_Demo_Review-red?style=for-the-badge)](data/review.mp4)
+
+> [!TIP]
+> Click the badge above or [open data/review.mp4](data/review.mp4) to watch the full video walkthrough.
 
 ---
 
 ## 📸 Interface Preview & Screenshots
 
-````carousel
+### 🎤 Live Synced Lyrics (Karaoke Mode)
 ![Live Synced Lyrics Karaoke Mode](data/tab_lyrics.jpg)
-<!-- slide -->
+
+### 🎛️ Dynamic Audio Spectrum Visualizer
 ![Dynamic Audio Spectrum Visualizer](data/tab_visualizer.jpg)
-<!-- slide -->
+
+### 📻 24/7 Live Radio Streams
 ![24/7 Live Radio Streams](data/tab_radio.jpg)
-<!-- slide -->
+
+### 📜 Playback History Log
 ![Playback History Log](data/tab_history.jpg)
-<!-- slide -->
+
+### ⚙️ Keyboard Controls & Help Manual
 ![Keyboard Controls & Help Manual](data/tab_help.jpg)
-````
 
 ---
 
