@@ -88,11 +88,19 @@ cd musterm
 
 ---
 
-### Dependency Repair & Environment Check
-To inspect or repair system dependencies (`python3`, `mpv`, `yt-dlp`) and PATH configuration:
+### Dependency Repair, PATH Check, & Clear History
 ```bash
+# Clear playback history log
+musterm --clear-history
+
+# Inspect or repair system dependencies (python3, mpv, yt-dlp)
 musterm --check
 ```
+
+---
+
+> [!TIP]
+> MusTerm auto-detects your system package manager (`pkg`, `apt`, `brew`, `pacman`, `dnf`, `apk`, `xbps`) and will install missing binaries automatically on first launch!
 
 ---
 
@@ -101,10 +109,11 @@ musterm --check
 | Category | Key | Action |
 | --- | --- | --- |
 | **Navigation** | `1` - `6` or `Tab` | Switch Tabs (`Search`, `Radio`, `History`, `Lyrics`, `Visualizer`, `Help`) |
+| **History** | `c` or `x` *(in History tab)* | Clear playback history log instantly |
 | **Lyrics** | `l` | Jump directly to Live Synced Lyrics tab |
 | **Lyrics** | `r` | Re-fetch / Refresh lyrics for currently playing song |
 | **Search** | `s` or `/` | Activate Live Search Input Box |
-| **Search** | `c` | Clear search query & type new title |
+| **Search** | `c` *(in Search tab)* | Clear search query & type new title |
 | **Search Mode** | `Tab` / `Esc` / `↓` | Exit search edit mode & return to list navigation |
 | **List Scroll** | `↑` / `↓` or `k` / `j` | Navigate tracks & scroll lyrics |
 | **Playback** | `Enter` | Submit Search / Play selected item |

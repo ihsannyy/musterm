@@ -655,12 +655,21 @@ class MusTermApp:
             else:
                 self.safe_addstr(self.stdscr, line_y, 3, f"    {disp_line}", curses.color_pair(4))
 
+    def clear_history(self):
+        if HIST_FILE.exists():
+            try:
+                os.remove(HIST_FILE)
+            except Exception:
+                pass
+        self.history_items = []
+        self.selected_index = 0
+
     def draw_tab_history(self, max_y, max_x):
         res_y = 3
         res_h = max_y - res_y - 5
         if res_h < 2:
             return
-        self.draw_box(self.stdscr, res_y, 1, res_h, max_x - 2, "PLAYBACK HISTORY", 1)
+        self.draw_box(self.stdscr, res_y, 1, res_h, max_x - 2, "PLAYBACK HISTORY [c: clear history]", 1)
 
         if not self.history_items:
             self.safe_addstr(self.stdscr, res_y + 2, 4, "No history yet.", curses.color_pair(5))
@@ -904,10 +913,16 @@ class MusTermApp:
             self.is_typing_search = True
             self.search_cursor_pos = len(self.search_query)
         elif key in (ord('c'), ord('C')):
-            self.current_tab = 0
-            self.search_query = ""
-            self.search_cursor_pos = 0
-            self.is_typing_search = True
+            if self.current_tab == 2:
+                self.clear_history()
+            else:
+                self.current_tab = 0
+                self.search_query = ""
+                self.search_cursor_pos = 0
+                self.is_typing_search = True
+        elif key in (ord('x'), ord('X')):
+            if self.current_tab == 2:
+                self.clear_history()
         elif key in (ord('r'), ord('R')):
             if self.mpv.current_title and self.mpv.current_title != "No Track Playing":
                 self.fetch_lyrics(self.mpv.current_title, self.mpv.current_artist)

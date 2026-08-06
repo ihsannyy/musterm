@@ -196,6 +196,19 @@ check_dependencies() {
     sleep 0.5
 }
 
+clear_history_log() {
+    show_banner
+    local hist_log="$MUST_DIR/history.log"
+    if [ -f "$hist_log" ]; then
+        rm -f "$hist_log"
+        print_success "Playback history log cleared successfully! ($hist_log)"
+    else
+        print_info "Playback history log is already empty."
+    fi
+    echo ""
+    exit 0
+}
+
 show_help() {
     show_banner
     echo -e "${C_CYAN}USAGE GUIDE:${NC}"
@@ -203,11 +216,13 @@ show_help() {
     echo ""
     echo -e "${C_CYAN}OPTIONS:${NC}"
     echo -e "  ${C_GREEN}(no args)${NC}              Launch Full Custom TUI App"
+    echo -e "  ${C_GREEN}-cl, --clear-history${NC}   Clear playback history log file"
     echo -e "  ${C_GREEN}-c, --check${NC}           Check and repair system dependencies & setup PATH"
     echo -e "  ${C_GREEN}-h, --help${NC}            Show this help manual"
     echo ""
     echo -e "${C_CYAN}TUI CONTROLS:${NC}"
     echo -e "  ${C_YELLOW}1 - 6 / Tab${NC}           Switch tabs (Search, Radio, History, Lyrics, Visualizer, Help)"
+    echo -e "  ${C_YELLOW}c (in History tab)${NC}    Clear playback history instantly"
     echo -e "  ${C_YELLOW}s or /${NC}                Activate live search box"
     echo -e "  ${C_YELLOW}↑ / ↓ or k / j${NC}        Navigate tracks / radios / lyrics"
     echo -e "  ${C_YELLOW}Enter${NC}                 Play selected item"
@@ -221,6 +236,14 @@ show_help() {
 main() {
     auto_setup_path
 
+    if [ "$#" -gt 0 ]; then
+        case "$1" in
+            -h|--help) show_help ;;
+            -cl|--clear-history|--clean) clear_history_log ;;
+            -c|--check|--install) check_dependencies ;;
+        esac
+    fi
+
     if ! command -v yt-dlp &>/dev/null || ! command -v mpv &>/dev/null || ! command -v python3 &>/dev/null; then
         check_dependencies
     fi
@@ -233,6 +256,7 @@ main() {
     else
         case "$1" in
             -h|--help) show_help ;;
+            -cl|--clear-history|--clean) clear_history_log ;;
             -c|--check|--install) check_dependencies ;;
             *)
                 if command -v pulseaudio &>/dev/null; then
