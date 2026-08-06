@@ -50,29 +50,33 @@ Designed for **Termux (Android)**, **Linux (Debian, Arch, Ubuntu, Fedora, Alpine
 
 ---
 
-## 🚀 Step-by-Step Installation & Usage
+## 🚀 Installation & Usage
 
-### 📱 For Termux (Android)
-Open Termux and run the following commands:
+### ⚡ 1-Command Auto Installer (Recommended)
+Run this single command in your terminal to automatically download, install packages, and link `musterm` directly to your system `$PREFIX/bin` (or `PATH`):
+
 ```bash
-# 1. Update packages & install git
+curl -fsSL https://raw.githubusercontent.com/ihsannyy/musterm/main/install.sh | bash
+```
+
+> [!NOTE]
+> After running the 1-command installer above, you can immediately type **`musterm`** from **any directory** in your terminal!
+
+---
+
+### 📦 Manual Installation (Git Clone)
+
+#### 📱 For Termux (Android)
+```bash
 pkg update && pkg install git -y
-
-# 2. Clone the repository
 git clone https://github.com/ihsannyy/musterm.git
-
-# 3. Enter folder & launch
 cd musterm
 ./musterm
 ```
 
-### 🐧 For Linux (Ubuntu / Debian / Arch / Fedora) & macOS
-Open your terminal and run:
+#### 🐧 For Linux (Ubuntu / Debian / Arch / Fedora) & macOS
 ```bash
-# 1. Clone the repository
 git clone https://github.com/ihsannyy/musterm.git
-
-# 2. Enter folder & launch
 cd musterm
 ./musterm
 ```
