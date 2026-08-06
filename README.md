@@ -50,24 +50,45 @@ Designed for **Termux (Android)**, **Linux (Debian, Arch, Ubuntu, Fedora, Alpine
 
 ---
 
-## 🚀 Installation & Usage
+## 🚀 Step-by-Step Installation & Usage
 
-### Launch Application
-MusTerm is automatically linked to your system `$PREFIX/bin` (or `PATH`). You can type `musterm` from **any directory** in your terminal:
+### 📱 For Termux (Android)
+Open Termux and run the following commands:
 ```bash
-musterm
+# 1. Update packages & install git
+pkg update && pkg install git -y
+
+# 2. Clone the repository
+git clone https://github.com/ihsannyy/musterm.git
+
+# 3. Enter folder & launch
+cd musterm
+./musterm
 ```
 
-### Dependency Repair & PATH Check
-To inspect or repair system dependencies (`python3`, `mpv`, `yt-dlp`) and system PATH setup:
+### 🐧 For Linux (Ubuntu / Debian / Arch / Fedora) & macOS
+Open your terminal and run:
 ```bash
-musterm --check
+# 1. Clone the repository
+git clone https://github.com/ihsannyy/musterm.git
+
+# 2. Enter folder & launch
+cd musterm
+./musterm
 ```
 
 ---
 
 > [!TIP]
-> MusTerm auto-detects your system package manager (`pkg`, `apt`, `brew`, `pacman`, `dnf`, `apk`, `xbps`) and will install missing binaries automatically on first launch!
+> **Global System Command**: On first launch, MusTerm automatically links itself to your system `$PREFIX/bin` or `PATH`. After installation, you can type **`musterm`** from **any directory** in your terminal!
+
+---
+
+### Dependency Repair & Environment Check
+To inspect or repair system dependencies (`python3`, `mpv`, `yt-dlp`) and PATH configuration:
+```bash
+musterm --check
+```
 
 ---
 
