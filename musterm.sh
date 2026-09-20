@@ -220,10 +220,20 @@ show_help() {
     echo -e "  ${C_GREEN}-c, --check${NC}           Check and repair system dependencies & setup PATH"
     echo -e "  ${C_GREEN}-h, --help${NC}            Show this help manual"
     echo ""
+    echo -e "${C_CYAN}REMOTE & LOCKSCREEN CONTROL:${NC}"
+    echo -e "  ${C_GREEN}--toggle${NC}               Toggle play / pause on active instance"
+    echo -e "  ${C_GREEN}--play${NC}                 Resume playback"
+    echo -e "  ${C_GREEN}--pause${NC}                Pause playback"
+    echo -e "  ${C_GREEN}--next${NC}                 Skip to next track / seek +15s"
+    echo -e "  ${C_GREEN}--prev${NC}                 Return to previous track / seek -15s"
+    echo -e "  ${C_GREEN}--stop${NC}                 Stop playback & remove notification"
+    echo ""
     echo -e "${C_CYAN}TUI CONTROLS:${NC}"
     echo -e "  ${C_YELLOW}1 - 6 / Tab${NC}           Switch tabs (Search, Radio, History, Lyrics, Visualizer, Help)"
     echo -e "  ${C_YELLOW}c (in History tab)${NC}    Clear playback history instantly"
     echo -e "  ${C_YELLOW}s or /${NC}                Activate live search box"
+    echo -e "  ${C_YELLOW}> / n${NC}                 Play next track / skip forward 15s"
+    echo -e "  ${C_YELLOW}< / p${NC}                 Play previous track / skip back 15s"
     echo -e "  ${C_YELLOW}↑ / ↓ or k / j${NC}        Navigate tracks / radios / lyrics"
     echo -e "  ${C_YELLOW}Enter${NC}                 Play selected item"
     echo -e "  ${C_YELLOW}Space${NC}                 Pause / Resume playback"
@@ -241,6 +251,11 @@ main() {
             -h|--help) show_help ;;
             -cl|--clear-history|--clean) clear_history_log ;;
             -c|--check|--install) check_dependencies ;;
+            --toggle|--play|--pause|--next|--prev|--stop)
+                action="${1#--}"
+                python3 "$PYTHON_TUI" --remote "$action"
+                exit $?
+                ;;
         esac
     fi
 
@@ -258,6 +273,11 @@ main() {
             -h|--help) show_help ;;
             -cl|--clear-history|--clean) clear_history_log ;;
             -c|--check|--install) check_dependencies ;;
+            --toggle|--play|--pause|--next|--prev|--stop)
+                action="${1#--}"
+                python3 "$PYTHON_TUI" --remote "$action"
+                exit $?
+                ;;
             *)
                 if command -v pulseaudio &>/dev/null; then
                     pulseaudio --start >/dev/null 2>&1 || true

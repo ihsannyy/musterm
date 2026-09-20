@@ -42,6 +42,7 @@ Designed for **Termux (Android)**, **Linux (Debian, Arch, Ubuntu, Fedora, Alpine
 ## ✨ Features
 
 - 🎤 **Live Synced Lyrics (Karaoke Mode)**: Auto-fetches synchronized LRC lyrics via the LRCLIB database. Displays the current active singing line in glowing Debian Red, auto-scrolls in sync with playback time, and shows live mini lyrics on any tab.
+- 📲 **Android Lockscreen & Media Notification**: Native media notification via `termux-notification` with live subtitle lyrics, song progress, play/pause toggling, and track navigation directly from the Android lockscreen or status bar.
 - 🎨 **Kali & Debian Hybrid Theme**: Custom-built ANSI 256-Color UI blending Kali Electric Blue borders with Debian Crimson Red accents.
 - 🎛️ **Music-Synced Spectrum Visualizer**: Dynamic vertical audio equalizer bars pulsing to the exact tempo and frequency bands of playing audio.
 - 📻 **24/7 Live Radio Streams**: Pre-loaded Lo-Fi Girl, Synthwave, Vaporwave, Cyberpunk Electro, and City Pop streams with instant 1-click playback.
@@ -93,6 +94,14 @@ cd musterm
 # Clear playback history log
 musterm --clear-history
 
+# Remote / Lockscreen control CLI commands
+musterm --toggle   # Toggle play/pause on active player
+musterm --play     # Resume playback
+musterm --pause    # Pause playback
+musterm --next     # Next track / seek +15s
+musterm --prev     # Previous track / seek -15s
+musterm --stop     # Stop playback & clear notification
+
 # Inspect or repair system dependencies (python3, mpv, yt-dlp)
 musterm --check
 ```
@@ -116,6 +125,7 @@ musterm --check
 | **Search** | `c` *(in Search tab)* | Clear search query & type new title |
 | **Search Mode** | `Tab` / `Esc` / `↓` | Exit search edit mode & return to list navigation |
 | **List Scroll** | `↑` / `↓` or `k` / `j` | Navigate tracks & scroll lyrics |
+| **Track Skip** | `>` / `n` or `<` / `p` | Play next / previous track or seek 15s |
 | **Playback** | `Enter` | Submit Search / Play selected item |
 | **Playback** | `Space` | Toggle Pause / Resume |
 | **Volume** | `+` / `-` | Increase / Decrease volume |

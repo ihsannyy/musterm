@@ -18,6 +18,9 @@ import curses
 import datetime
 import math
 import re
+import queue
+import shutil
+import atexit
 import urllib.request
 import urllib.parse
 from pathlib import Path
@@ -31,6 +34,158 @@ CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
 HIST_FILE = CONFIG_DIR / "history.log"
 SOCKET_PATH = CONFIG_DIR / "mpv.sock"
+CMD_SOCK_PATH = CONFIG_DIR / "cmd.sock"
+
+
+def send_remote_command(action):
+    """Send remote action to running MusTerm instance via UNIX socket."""
+    sock_path = str(CMD_SOCK_PATH)
+    if os.path.exists(sock_path):
+        try:
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.settimeout(1.5)
+            s.connect(sock_path)
+            s.sendall(f"{action}\n".encode("utf-8"))
+            resp = s.recv(1024).decode("utf-8").strip()
+            s.close()
+            return True
+        except Exception:
+            pass
+
+    # Fallback to direct MPV socket communication if cmd.sock not answering
+    mpv_sock = str(SOCKET_PATH)
+    if os.path.exists(mpv_sock):
+        try:
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.settimeout(1.0)
+            s.connect(mpv_sock)
+            if action in ("play", "pause", "toggle"):
+                if action == "play":
+                    s.sendall(b'{"command": ["set_property", "pause", false]}\n')
+                elif action == "pause":
+                    s.sendall(b'{"command": ["set_property", "pause", true]}\n')
+                else:
+                    s.sendall(b'{"command": ["cycle", "pause"]}\n')
+            elif action == "next":
+                s.sendall(b'{"command": ["seek", 15, "relative"]}\n')
+            elif action == "prev":
+                s.sendall(b'{"command": ["seek", -15, "relative"]}\n')
+            elif action == "stop":
+                s.sendall(b'{"command": ["quit"]}\n')
+            s.close()
+            return True
+        except Exception:
+            pass
+    return False
+
+
+def cleanup_atexit():
+    sock_file = CONFIG_DIR / "cmd.sock"
+    if sock_file.exists():
+        try: sock_file.unlink()
+        except OSError: pass
+    if shutil.which("termux-notification-remove"):
+        try:
+            subprocess.run(["termux-notification-remove", "musterm"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1)
+        except Exception:
+            pass
+
+atexit.register(cleanup_atexit)
+
+
+class AndroidNotificationManager:
+    """Manages Android Media Notification via termux-notification."""
+    def __init__(self, app):
+        self.app = app
+        self.enabled = shutil.which("termux-notification") is not None
+        self.last_update = 0
+        self.last_state = None
+        self.launcher_cmd = self._find_launcher()
+
+    def _find_launcher(self):
+        p = shutil.which("musterm")
+        if p and Path(p).exists():
+            return p
+        script = Path(__file__).resolve().parent / "musterm.sh"
+        if script.exists():
+            return str(script)
+        return f"{sys.executable} {Path(__file__).resolve()}"
+
+    def update(self, force=False):
+        if not self.enabled:
+            return
+
+        now = time.time()
+        if not force and (now - self.last_update < 1.0):
+            return
+
+        mpv = self.app.mpv
+        if not mpv.is_playing:
+            if self.last_state != "stopped":
+                self.clear()
+                self.last_state = "stopped"
+            return
+
+        title = mpv.current_title or "MusTerm Player"
+        artist = mpv.current_artist or ""
+        is_paused = mpv.is_paused
+
+        lyric = self.app.get_current_lyric_line()
+        if lyric:
+            content = f"🎤 {lyric}"
+        elif artist:
+            pos_m = int(mpv.time_pos) // 60
+            pos_s = int(mpv.time_pos) % 60
+            dur_m = int(mpv.duration) // 60
+            dur_s = int(mpv.duration) % 60
+            if mpv.duration > 0:
+                time_str = f"{pos_m:02d}:{pos_s:02d} / {dur_m:02d}:{dur_s:02d}"
+            else:
+                time_str = f"{pos_m:02d}:{pos_s:02d}"
+            content = f"{artist} • {time_str}"
+        else:
+            content = "Playing on MusTerm" if not is_paused else "Playback Paused"
+
+        state_key = (title, content, is_paused)
+        if not force and state_key == self.last_state:
+            return
+
+        self.last_update = now
+        self.last_state = state_key
+
+        def _send():
+            cmd = [
+                "termux-notification",
+                "--id", "musterm",
+                "--type", "media",
+                "--title", title[:60],
+                "-c", content[:100],
+                "--icon", "music_note",
+                "--ongoing",
+                "--alert-once",
+                "--action", "am start -n com.termux/.app.TermuxActivity",
+                "--media-play", f"{self.launcher_cmd} --play",
+                "--media-pause", f"{self.launcher_cmd} --pause",
+                "--media-next", f"{self.launcher_cmd} --next",
+                "--media-previous", f"{self.launcher_cmd} --prev",
+                "--on-delete", f"{self.launcher_cmd} --stop"
+            ]
+            try:
+                subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
+            except Exception:
+                pass
+
+        threading.Thread(target=_send, daemon=True).start()
+
+    def clear(self):
+        if not self.enabled:
+            return
+        def _remove():
+            try:
+                subprocess.run(["termux-notification-remove", "musterm"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
+            except Exception:
+                pass
+        threading.Thread(target=_remove, daemon=True).start()
 
 RADIO_STATIONS = [
     {"name": "Lofi Girl Radio (24/7 Chill Beats)", "url": "https://play.streamaudio.de/lofi", "genre": "Lo-Fi / Chill"},
@@ -309,8 +464,118 @@ class MusTermApp:
         self.lyrics_title = ""
         self.lyrics_manual_scroll = 0
 
+        self.cmd_queue = queue.Queue()
+        self.notify_mgr = AndroidNotificationManager(self)
+        self.start_ipc_server()
+
         self.setup_colors()
         self.load_history()
+
+    def start_ipc_server(self):
+        sock_file = CONFIG_DIR / "cmd.sock"
+        if sock_file.exists():
+            try:
+                sock_file.unlink()
+            except OSError:
+                pass
+
+        def _server_thread():
+            server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            try:
+                server.bind(str(sock_file))
+                server.listen(5)
+                server.settimeout(1.0)
+            except Exception:
+                return
+
+            while self.running:
+                try:
+                    conn, _ = server.accept()
+                    conn.settimeout(1.0)
+                    data = conn.recv(1024)
+                    if data:
+                        cmd = data.decode("utf-8").strip()
+                        self.cmd_queue.put(cmd)
+                        conn.sendall(b"OK\n")
+                    conn.close()
+                except socket.timeout:
+                    continue
+                except Exception:
+                    break
+
+            try:
+                server.close()
+                if sock_file.exists():
+                    sock_file.unlink()
+            except Exception:
+                pass
+
+        threading.Thread(target=_server_thread, daemon=True).start()
+
+    def handle_external_commands(self):
+        while not self.cmd_queue.empty():
+            try:
+                cmd = self.cmd_queue.get_nowait()
+                if cmd == "play":
+                    if self.mpv.is_paused:
+                        self.mpv.toggle_pause()
+                    self.notify_mgr.update(force=True)
+                elif cmd == "pause":
+                    if not self.mpv.is_paused:
+                        self.mpv.toggle_pause()
+                    self.notify_mgr.update(force=True)
+                elif cmd == "toggle":
+                    self.mpv.toggle_pause()
+                    self.notify_mgr.update(force=True)
+                elif cmd == "next":
+                    self.play_next()
+                    self.notify_mgr.update(force=True)
+                elif cmd == "prev":
+                    self.play_previous()
+                    self.notify_mgr.update(force=True)
+                elif cmd == "stop":
+                    self.mpv.stop()
+                    self.notify_mgr.clear()
+            except Exception:
+                break
+
+    def play_next(self):
+        if self.current_tab == 0 and self.search_results:
+            self.selected_index = (self.selected_index + 1) % len(self.search_results)
+            item = self.search_results[self.selected_index]
+            self.mpv.play_url(item['url'], item['title'], item['uploader'], app_ref=self)
+            self.load_history()
+        elif self.current_tab == 1 and RADIO_STATIONS:
+            self.selected_index = (self.selected_index + 1) % len(RADIO_STATIONS)
+            st = RADIO_STATIONS[self.selected_index]
+            self.mpv.play_url(st['url'], st['name'], st['genre'], app_ref=self)
+            self.load_history()
+        elif self.current_tab == 2 and self.history_items:
+            self.selected_index = (self.selected_index + 1) % len(self.history_items)
+            h_item = self.history_items[self.selected_index]
+            query = h_item.split("|")[-1].strip() if "|" in h_item else h_item
+            self.mpv.play_url(f"ytsearch:{query}", query, app_ref=self)
+        else:
+            self.mpv.seek(15)
+
+    def play_previous(self):
+        if self.current_tab == 0 and self.search_results:
+            self.selected_index = (self.selected_index - 1) % len(self.search_results)
+            item = self.search_results[self.selected_index]
+            self.mpv.play_url(item['url'], item['title'], item['uploader'], app_ref=self)
+            self.load_history()
+        elif self.current_tab == 1 and RADIO_STATIONS:
+            self.selected_index = (self.selected_index - 1) % len(RADIO_STATIONS)
+            st = RADIO_STATIONS[self.selected_index]
+            self.mpv.play_url(st['url'], st['name'], st['genre'], app_ref=self)
+            self.load_history()
+        elif self.current_tab == 2 and self.history_items:
+            self.selected_index = (self.selected_index - 1) % len(self.history_items)
+            h_item = self.history_items[self.selected_index]
+            query = h_item.split("|")[-1].strip() if "|" in h_item else h_item
+            self.mpv.play_url(f"ytsearch:{query}", query, app_ref=self)
+        else:
+            self.mpv.seek(-15)
 
     def setup_colors(self):
         curses.start_color()
@@ -816,6 +1081,8 @@ class MusTermApp:
             ("1-6 / Tab", "Switch tabs"),
             ("l", "Jump to Lyrics tab"),
             ("r", "Re-fetch lyrics for current song"),
+            (">/n", "Play next track / seek +15s"),
+            ("</p", "Play previous track / seek -15s"),
             ("c", "Clear search and type new query"),
             ("s or /", "Edit current search query"),
             ("Left/Right", "Move cursor in search"),
@@ -903,6 +1170,13 @@ class MusTermApp:
             self.selected_index = 0
         elif key == ord(' '):
             self.mpv.toggle_pause()
+            self.notify_mgr.update(force=True)
+        elif key in (ord('>'), ord('.'), ord('n'), ord('N')):
+            self.play_next()
+            self.notify_mgr.update(force=True)
+        elif key in (ord('<'), ord(','), ord('p'), ord('P')):
+            self.play_previous()
+            self.notify_mgr.update(force=True)
         elif key in (ord('+'), ord('='), ord(']')):
             self.mpv.change_volume(5)
         elif key in (ord('-'), ord('[')):
@@ -975,6 +1249,10 @@ class MusTermApp:
     def run(self):
         while self.running:
             self.anim_tick += 1
+            self.handle_external_commands()
+            self.mpv.update_status()
+            self.notify_mgr.update()
+
             self.stdscr.erase()
 
             max_y, max_x = self.stdscr.getmaxyx()
@@ -1012,6 +1290,7 @@ class MusTermApp:
             time.sleep(0.05)
 
         self.mpv.stop()
+        self.notify_mgr.clear()
 
 
 def main(stdscr):
@@ -1019,6 +1298,11 @@ def main(stdscr):
     app.run()
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "--remote":
+        action = sys.argv[2] if len(sys.argv) > 2 else "toggle"
+        ok = send_remote_command(action)
+        sys.exit(0 if ok else 1)
+
     try:
         curses.wrapper(main)
     except KeyboardInterrupt:
