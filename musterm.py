@@ -35,6 +35,7 @@ CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 HIST_FILE = CONFIG_DIR / "history.log"
 SOCKET_PATH = CONFIG_DIR / "mpv.sock"
 CMD_SOCK_PATH = CONFIG_DIR / "cmd.sock"
+NOW_PLAYING_FILE = CONFIG_DIR / "now_playing"
 
 
 def send_remote_command(action):
@@ -83,6 +84,9 @@ def cleanup_atexit():
     sock_file = CONFIG_DIR / "cmd.sock"
     if sock_file.exists():
         try: sock_file.unlink()
+        except OSError: pass
+    if NOW_PLAYING_FILE.exists():
+        try: NOW_PLAYING_FILE.unlink()
         except OSError: pass
     if shutil.which("termux-notification-remove"):
         try:
@@ -153,6 +157,18 @@ class AndroidNotificationManager:
         self.last_update = now
         self.last_state = state_key
 
+        try:
+            NOW_PLAYING_FILE.write_text(json.dumps({
+                "title": title,
+                "artist": artist,
+                "paused": is_paused,
+                "pos": mpv.time_pos,
+                "dur": mpv.duration,
+                "lyric": lyric or ""
+            }))
+        except Exception:
+            pass
+
         def _send():
             cmd = [
                 "termux-notification",
@@ -178,6 +194,9 @@ class AndroidNotificationManager:
         threading.Thread(target=_send, daemon=True).start()
 
     def clear(self):
+        if NOW_PLAYING_FILE.exists():
+            try: NOW_PLAYING_FILE.unlink()
+            except OSError: pass
         if not self.enabled:
             return
         def _remove():
